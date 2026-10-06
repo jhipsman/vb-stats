@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Volleyball Stat Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface-hover: #252836; --border: #2a2d3a;
+    --text: #e8e9ed; --text-muted: #8b8fa3;
+    --kill: #22c55e; --kill-bg: rgba(34,197,94,0.12);
+    --error: #ef4444; --error-bg: rgba(239,68,68,0.12);
+    --ace: #a855f7; --ace-bg: rgba(168,85,247,0.12);
+    --assist: #f59e0b; --assist-bg: rgba(245,158,11,0.12);
+    --block: #06b6d4; --block-bg: rgba(6,182,212,0.12);
+    --dig: #3b82f6; --dig-bg: rgba(59,130,246,0.12);
+    --neutral: #64748b; --neutral-bg: rgba(100,116,139,0.12);
+    --selected: #6366f1; --selected-glow: rgba(99,102,241,0.3);
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:'Inter',system-ui,-apple-system,sans-serif; }
+  .screen { display:none; height:100%; flex-direction:column; }
+  .screen.active { display:flex; }
+
+  /* PLAYER COLORS */
+  .pc-0  { --pc: #ef4444; --pc-bg: rgba(239,68,68,0.10); }
+  .pc-1  { --pc: #3b82f6; --pc-bg: rgba(59,130,246,0.10); }
+  .pc-2  { --pc: #22c55e; --pc-bg: rgba(34,197,94,0.10); }
+  .pc-3  { --pc: #f59e0b; --pc-bg: rgba(245,158,11,0.10); }
+  .pc-4  { --pc: #a855f7; --pc-bg: rgba(168,85,247,0.10); }
+  .pc-5  { --pc: #ec4899; --pc-bg: rgba(236,72,153,0.10); }
+  .pc-6  { --pc: #06b6d4; --pc-bg: rgba(6,182,212,0.10); }
+  .pc-7  { --pc: #f97316; --pc-bg: rgba(249,115,22,0.10); }
+  .pc-8  { --pc: #84cc16; --pc-bg: rgba(132,204,22,0.10); }
+  .pc-9  { --pc: #e879f9; --pc-bg: rgba(232,121,249,0.10); }
+  .pc-10 { --pc: #14b8a6; --pc-bg: rgba(20,184,166,0.10); }
+  .pc-11 { --pc: #fb923c; --pc-bg: rgba(251,146,60,0.10); }
+  .pc-12 { --pc: #818cf8; --pc-bg: rgba(129,140,248,0.10); }
+  .pc-13 { --pc: #fbbf24; --pc-bg: rgba(251,191,36,0.10); }
+  .pc-14 { --pc: #2dd4bf; --pc-bg: rgba(45,212,191,0.10); }
+  .pc-15 { --pc: #f472b6; --pc-bg: rgba(244,114,182,0.10); }
+
+  /* HOME */
+  .home-screen { align-items:center; padding:32px; gap:20px; overflow-y:auto; }
+  .home-screen h1 { font-size:28px; font-weight:900; letter-spacing:-0.5px; flex-shrink:0; margin-top:40px; }
+  .home-screen > p { color:var(--text-muted); font-size:15px; max-width:420px; text-align:center; line-height:1.5; flex-shrink:0; }
+  .home-actions { display:flex; gap:12px; flex-shrink:0; }
+  .primary-btn { padding:16px 40px; border-radius:12px; border:none; background:var(--selected); color:white; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .secondary-btn { padding:14px 32px; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .home-columns { display:flex; gap:24px; width:100%; max-width:700px; flex-shrink:0; }
+  .home-col { flex:1; min-width:0; }
+  .home-col-label { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+  .saved-item { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--surface); border-radius:10px; border:1px solid var(--border); margin-bottom:6px; cursor:pointer; }
+  .saved-item:active { background:var(--surface-hover); }
+  .si-info { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+  .si-title { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .si-meta { font-size:11px; color:var(--text-muted); }
+  .si-actions { display:flex; gap:5px; flex-shrink:0; margin-left:8px; }
+  .si-btn { padding:5px 10px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .si-del { padding:5px 10px; border-radius:6px; border:none; background:var(--error-bg); color:var(--error); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .no-items { color:var(--text-muted); font-size:13px; font-style:italic; text-align:center; padding:14px; }
+
+  /* SETUP */
+  .setup-screen { align-items:center; justify-content:center; gap:16px; padding:32px; }
+  .setup-screen h2 { font-size:22px; font-weight:800; }
+  .setup-top-row { display:flex; gap:12px; align-items:flex-end; width:100%; max-width:500px; }
+  .setup-field { display:flex; flex-direction:column; gap:4px; flex:1; }
+  .setup-field label { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+  .setup-field input, .setup-field select { padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:16px; font-family:inherit; outline:none; }
+  .setup-field input:focus, .setup-field select:focus { border-color:var(--selected); }
+  .roster-input-area { display:flex; flex-direction:column; gap:6px; width:100%; max-width:500px; max-height:300px; overflow-y:auto; padding-right:4px; }
+  .player-row { display:flex; gap:8px; align-items:center; }
+  .player-row .color-dot { width:28px; height:28px; border-radius:50%; flex-shrink:0; }
+  .player-row input { flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:15px; font-family:inherit; outline:none; }
+  .player-row input:focus { border-color:var(--selected); }
+  .player-row input::placeholder { color:var(--text-muted); }
+  .player-row .num-input { width:70px; text-align:center; font-weight:700; }
+  .remove-btn { width:32px; height:32px; border-radius:8px; border:none; background:var(--error-bg); color:var(--error); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .add-player-btn { padding:10px; border-radius:10px; border:1px dashed var(--border); background:transparent; color:var(--text-muted); font-size:14px; cursor:pointer; font-family:inherit; width:100%; max-width:500px; }
+  .setup-actions { display:flex; gap:10px; margin-top:4px; flex-wrap:wrap; justify-content:center; }
+  .start-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .back-btn { padding:14px 24px; border-radius:12px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .save-team-btn { padding:14px 24px; border-radius:12px; border:1px solid rgba(34,197,94,0.3); background:rgba(34,197,94,0.08); color:var(--kill); font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
+
+  /* GAME TOP BAR */
+  .top-bar { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--surface); border-bottom:1px solid var(--border); min-height:44px; gap:6px; flex-shrink:0; }
+  .set-info { display:flex; gap:3px; align-items:center; }
+  .set-btn { padding:5px 9px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .set-btn.active { background:var(--selected); color:white; border-color:var(--selected); }
+  .score-area { display:flex; align-items:center; gap:5px; }
+  .score-label { font-size:10px; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+  .score-num { font-size:20px; font-weight:900; width:42px; text-align:center; background:transparent; border:none; color:var(--text); font-family:inherit; -moz-appearance:textfield; }
+  .score-num::-webkit-inner-spin-button { -webkit-appearance:none; }
+  .score-divider { font-size:16px; color:var(--text-muted); font-weight:300; }
+  .top-actions { display:flex; gap:5px; }
+  .icon-btn { padding:6px 10px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  .icon-btn:active { background:var(--surface-hover); }
+  .icon-btn.undo { color:var(--error); border-color:rgba(239,68,68,0.3); }
+  .game-title { font-size:12px; font-weight:700; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px; }
+
+  /* SELECTED INDICATOR */
+  .selected-indicator { height:36px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--text-muted); border-bottom:1px solid var(--border); background:var(--surface); transition:background 0.1s; }
+  .selected-indicator.has-player { color:white; }
+
+  /* MAIN */
+  .main-area { display:flex; flex:1; overflow:hidden; }
+
+  /* ROSTER */
+  .roster-panel { width:190px; padding:6px; overflow-y:auto; border-right:1px solid var(--border); flex-shrink:0; display:flex; flex-direction:column; gap:3px; }
+  .roster-panel-label { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; padding:2px 6px 4px; }
+  .player-btn {
+    display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:9px;
+    border:2px solid transparent; cursor:pointer; width:100%;
+    transition:border-color 0.08s, background 0.08s; flex-shrink:0;
+  }
+  .player-btn { background: var(--pc-bg); border-color: rgba(255,255,255,0.03); }
+  .player-btn:active { filter:brightness(1.2); }
+  .player-btn.selected { border-color: var(--pc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pc) 30%, transparent); }
+  .player-num { font-size:20px; font-weight:900; min-width:32px; text-align:center; color: var(--pc); }
+  .player-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color: var(--pc); }
+  .player-dot { width:8px; height:8px; border-radius:50%; background:var(--pc); flex-shrink:0; }
+
+  /* STATS PANEL */
+  .stats-panel { flex:1; padding:8px 10px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+  .stat-row { display:flex; gap:6px; align-items:stretch; }
+  .stat-section { display:flex; flex-direction:column; gap:3px; flex:1; }
+  .stat-section-label { font-size:9px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; padding:0 2px; }
+  .stat-group { display:flex; gap:4px; flex:1; }
+  .stat-btn { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 4px; border-radius:10px; border:2px solid transparent; cursor:pointer; flex:1; min-height:50px; transition:transform 0.08s; }
+  .stat-btn:active { transform:scale(0.94); }
+  .stat-btn.disabled { opacity:0.2; pointer-events:none; }
+  .stat-btn .stat-label { font-size:16px; font-weight:900; line-height:1; }
+  .stat-btn .stat-desc { font-size:8px; font-weight:700; margin-top:2px; opacity:0.7; text-transform:uppercase; }
+  .stat-btn.kill { background:var(--kill-bg); color:var(--kill); border-color:rgba(34,197,94,0.15); }
+  .stat-btn.err { background:var(--error-bg); color:var(--error); border-color:rgba(239,68,68,0.15); }
+  .stat-btn.ace { background:var(--ace-bg); color:var(--ace); border-color:rgba(168,85,247,0.15); }
+  .stat-btn.ast { background:var(--assist-bg); color:var(--assist); border-color:rgba(245,158,11,0.15); }
+  .stat-btn.blk { background:var(--block-bg); color:var(--block); border-color:rgba(6,182,212,0.15); }
+  .stat-btn.dg { background:var(--dig-bg); color:var(--dig); border-color:rgba(59,130,246,0.15); }
+  .stat-btn.ntl { background:var(--neutral-bg); color:var(--neutral); border-color:rgba(100,116,139,0.1); }
+  .stat-divider { width:1px; background:var(--border); flex-shrink:0; margin:0 2px; }
+
+  /* FEED */
+  .feed-panel { height:90px; border-top:1px solid var(--border); background:var(--surface); padding:5px 14px; overflow-y:auto; flex-shrink:0; }
+  .feed-label { font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+  .feed-entries { display:flex; flex-direction:column; gap:1px; }
+  .feed-entry { display:flex; align-items:center; gap:8px; font-size:12px; padding:2px 0; }
+  .feed-time { color:var(--text-muted); font-size:10px; width:52px; font-variant-numeric:tabular-nums; }
+  .feed-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .feed-player { font-weight:700; min-width:32px; }
+  .feed-stat { font-weight:600; }
+  .feed-stat.positive { color:var(--kill); }
+  .feed-stat.negative { color:var(--error); }
+  .feed-stat.special { color:var(--ace); }
+  .feed-stat.neutral-stat { color:var(--text-muted); }
+  .feed-set { color:var(--text-muted); font-size:10px; }
+  .feed-empty { color:var(--text-muted); font-size:12px; font-style:italic; padding:6px 0; }
+
+  /* OVERLAY */
+  .overlay { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:20px; }
+  .overlay.active { display:flex; }
+  .overlay-content { background:var(--surface); border-radius:16px; padding:20px; max-width:95vw; max-height:85vh; overflow:auto; border:1px solid var(--border); width:950px; }
+  .overlay-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .overlay-header h2 { font-size:18px; font-weight:800; }
+  .close-btn { padding:7px 14px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); cursor:pointer; font-family:inherit; font-weight:600; font-size:13px; }
+  .stats-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .stats-table th { text-align:center; padding:6px 4px; font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px; border-bottom:2px solid var(--border); white-space:nowrap; }
+  .stats-table th:first-child { text-align:left; }
+  .stats-table td { text-align:center; padding:7px 4px; border-bottom:1px solid var(--border); font-variant-numeric:tabular-nums; }
+  .stats-table td:first-child { text-align:left; font-weight:700; white-space:nowrap; }
+  .stats-table tr:last-child td { font-weight:800; background:rgba(99,102,241,0.06); }
+  .stats-table .player-color-cell { display:flex; align-items:center; gap:6px; }
+  .stats-table .tc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  /* TEAM NAME OVERLAY */
+  .team-overlay { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:20px; }
+  .team-overlay.active { display:flex; }
+  .team-dialog { background:var(--surface); border-radius:16px; padding:24px; border:1px solid var(--border); width:360px; display:flex; flex-direction:column; gap:16px; }
+  .team-dialog h3 { font-size:18px; font-weight:800; }
+  .team-dialog input { padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:16px; font-family:inherit; outline:none; }
+  .team-dialog input:focus { border-color:var(--selected); }
+  .team-dialog-actions { display:flex; gap:10px; justify-content:flex-end; }
+
+  @media (max-width:700px) {
+    .roster-panel { width:72px; }
+    .player-name { display:none; }
+    .stat-btn .stat-label { font-size:13px; }
+    .stat-btn { min-height:42px; padding:8px 2px; }
+    .game-title { display:none; }
+    .home-columns { flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="screen home-screen active" id="homeScreen">
+  <h1>🏐 Stat Tracker</h1>
+  <p>Track volleyball stats in real time. Two taps per stat. Tap player, tap stat, done.</p>
+  <div class="home-actions">
+    <button class="primary-btn" onclick="showSetup()">New Game</button>
+  </div>
+  <div class="home-columns">
+    <div class="home-col" id="savedTeamsArea"></div>
+    <div class="home-col" id="savedGamesArea"></div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div class="screen setup-screen" id="setupScreen">
+  <h2>Game Setup</h2>
+  <div class="setup-top-row">
+    <div class="setup-field"><label>Match Name</label><input type="text" id="gameName" placeholder="e.g. vs Central High"></div>
+    <div class="setup-field" style="max-width:140px;"><label>Date</label><input type="date" id="gameDate"></div>
+  </div>
+  <div class="setup-top-row">
+    <div class="setup-field">
+      <label>Load Team</label>
+      <select id="teamSelect" onchange="loadTeamRoster()">
+        <option value="">Start fresh</option>
+      </select>
+    </div>
+  </div>
+  <div style="width:100%;max-width:500px;padding:4px 0 2px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Roster</div>
+  <div class="roster-input-area" id="rosterInputs"></div>
+  <button class="add-player-btn" onclick="addPlayerRow()">+ Add player</button>
+  <div class="setup-actions">
+    <button class="back-btn" onclick="showHome()">Back</button>
+    <button class="save-team-btn" onclick="showSaveTeam()">Save Team</button>
+    <button class="primary-btn start-btn" id="startBtn" onclick="startGame()" disabled>Start</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="gameScreen">
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div class="game-title" id="gameTitle"></div>
+      <div class="set-info">
+        <button class="set-btn active" data-set="1" onclick="switchSet(1)">S1</button>
+        <button class="set-btn" data-set="2" onclick="switchSet(2)">S2</button>
+        <button class="set-btn" data-set="3" onclick="switchSet(3)">S3</button>
+        <button class="set-btn" data-set="4" onclick="switchSet(4)">S4</button>
+        <button class="set-btn" data-set="5" onclick="switchSet(5)">S5</button>
+      </div>
+    </div>
+    <div class="score-area">
+      <span class="score-label">Us</span>
+      <input type="number" class="score-num" id="scoreUs" value="0" min="0" max="99">
+      <span class="score-divider">/</span>
+      <input type="number" class="score-num" id="scoreThem" value="0" min="0" max="99">
+      <span class="score-label">Them</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn undo" id="undoBtn" onclick="undoLast()">Undo</button>
+      <button class="icon-btn" onclick="showStats()">Stats</button>
+      <button class="icon-btn" onclick="saveAndExit()">Save + Exit</button>
+    </div>
+  </div>
+  <div class="selected-indicator" id="selectedIndicator">Tap a player</div>
+  <div class="main-area">
+    <div class="roster-panel" id="rosterPanel"></div>
+    <div class="stats-panel" id="statsPanel">
+      <div class="stat-row">
+        <div class="stat-section"><div class="stat-section-label">Attack</div><div class="stat-group">
+          <button class="stat-btn kill disabled" onclick="rec('K','Kill','positive')"><span class="stat-label">K</span><span class="stat-desc">Kill</span></button>
+          <button class="stat-btn ntl disabled" onclick="rec('ATT','Attempt','neutral')"><span class="stat-label">ATT</span><span class="stat-desc">Attempt</span></button>
+          <button class="stat-btn err disabled" onclick="rec('HE','Hit Err','negative')"><span class="stat-label">HE</span><span class="stat-desc">Error</span></button>
+        </div></div>
+        <div class="stat-divider"></div>
+        <div class="stat-section"><div class="stat-section-label">Serve</div><div class="stat-group">
+          <button class="stat-btn ntl disabled" onclick="rec('SRV','Serve','neutral')"><span class="stat-label">SRV</span><span class="stat-desc">Serve</span></button>
+          <button class="stat-btn ace disabled" onclick="rec('SA','Ace','special')"><span class="stat-label">SA</span><span class="stat-desc">Ace</span></button>
+          <button class="stat-btn err disabled" onclick="rec('SE','Srv Err','negative')"><span class="stat-label">SE</span><span class="stat-desc">Error</span></button>
+        </div></div>
+      </div>
+      <div class="stat-row"><div class="stat-section"><div class="stat-section-label">Pass / Receive</div><div class="stat-group">
+        <button class="stat-btn kill disabled" onclick="rec('R3','Perfect','positive')"><span class="stat-label">3</span><span class="stat-desc">Perfect</span></button>
+        <button class="stat-btn ast disabled" onclick="rec('R2','Good','neutral')"><span class="stat-label">2</span><span class="stat-desc">Good</span></button>
+        <button class="stat-btn ntl disabled" onclick="rec('R1','Poor','neutral')"><span class="stat-label">1</span><span class="stat-desc">Poor</span></button>
+        <button class="stat-btn err disabled" onclick="rec('R0','Aced','negative')"><span class="stat-label">0</span><span class="stat-desc">Aced</span></button>
+      </div></div></div>
+      <div class="stat-row">
+        <div class="stat-section"><div class="stat-section-label">Setting</div><div class="stat-group">
+          <button class="stat-btn ntl disabled" onclick="rec('SATT','Set Att','neutral')"><span class="stat-label">SATT</span><span class="stat-desc">Attempt</span></button>
+          <button class="stat-btn ast disabled" onclick="rec('AST','Assist','special')"><span class="stat-label">AST</span><span class="stat-desc">Assist</span></button>
+          <button class="stat-btn err disabled" onclick="rec('BHE','Set Err','negative')"><span class="stat-label">BHE</span><span class="stat-desc">Error</span></button>
+        </div></div>
+        <div class="stat-divider"></div>
+        <div class="stat-section"><div class="stat-section-label">Block</div><div class="stat-group">
+          <button class="stat-btn blk disabled" onclick="rec('BLK','Block','positive')" style="max-width:none;"><span class="stat-label">BLK</span><span class="stat-desc">Block</span></button>
+        </div></div>
+      </div>
+      <div class="stat-row"><div class="stat-section"><div class="stat-section-label">Dig</div><div class="stat-group">
+        <button class="stat-btn dg disabled" onclick="rec('D','Dig','positive')"><span class="stat-label">D</span><span class="stat-desc">Success</span></button>
+        <button class="stat-btn ntl disabled" onclick="rec('DT','Touch','neutral')"><span class="stat-label">DT</span><span class="stat-desc">Touch</span></button>
+        <button class="stat-btn err disabled" onclick="rec('DE','Dig Err','negative')"><span class="stat-label">DE</span><span class="stat-desc">Error</span></button>
+      </div></div></div>
+    </div>
+  </div>
+  <div class="feed-panel">
+    <div class="feed-label">Live Feed</div>
+    <div class="feed-entries" id="feedEntries"><div class="feed-empty">Stats appear here</div></div>
+  </div>
+</div>
+
+<!-- STATS OVERLAY -->
+<div class="overlay" id="statsOverlay">
+  <div class="overlay-content">
+    <div class="overlay-header"><h2 id="statsTitle">Match Stats</h2><button class="close-btn" onclick="hideStats()">Close</button></div>
+    <div id="statsTableArea"></div>
+  </div>
+</div>
+
+<!-- SAVE TEAM OVERLAY -->
+<div class="team-overlay" id="teamOverlay">
+  <div class="team-dialog">
+    <h3>Save Team</h3>
+    <input type="text" id="teamNameInput" placeholder="Team name (e.g. Warwick 14s)">
+    <div class="team-dialog-actions">
+      <button class="back-btn" onclick="document.getElementById('teamOverlay').classList.remove('active')" style="padding:10px 20px;font-size:14px;">Cancel</button>
+      <button class="primary-btn" onclick="saveTeam()" style="padding:10px 24px;font-size:14px;">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS=['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899','#06b6d4','#f97316','#84cc16','#e879f9','#14b8a6','#fb923c','#818cf8','#fbbf24','#2dd4bf','#f472b6'];
+let players=[],selectedPlayer=null,currentSet=1,entries=[],entryId=0;
+let currentGameName='',currentGameDate='',currentGameId=null,setScores={};
+
+// Storage
+function loadData(k){try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}
+function saveData(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+// Home
+function showHome(){sw('homeScreen');renderSaved();renderTeams();}
+function renderSaved(){
+  const games=loadData('vb_games'),a=document.getElementById('savedGamesArea');
+  a.innerHTML='<div class="home-col-label">Saved Games</div>';
+  if(!games.length){a.innerHTML+='<div class="no-items">No saved games yet</div>';return;}
+  games.forEach((g,i)=>{a.innerHTML+=`
+    <div class="saved-item" onclick="loadGame(${i})">
+      <div class="si-info"><div class="si-title">${esc(g.name||'Untitled')}</div><div class="si-meta">${g.date||'No date'} · ${g.entries.length} stats</div></div>
+      <div class="si-actions"><button class="si-btn" onclick="event.stopPropagation();viewSaved(${i})">Stats</button><button class="si-del" onclick="event.stopPropagation();delGame(${i})">Del</button></div>
+    </div>`;});
+}
+function renderTeams(){
+  const teams=loadData('vb_teams'),a=document.getElementById('savedTeamsArea');
+  a.innerHTML='<div class="home-col-label">Saved Teams</div>';
+  if(!teams.length){a.innerHTML+='<div class="no-items">No saved teams yet</div>';return;}
+  teams.forEach((t,i)=>{a.innerHTML+=`
+    <div class="saved-item" onclick="showSetup();loadTeamById(${i})">
+      <div class="si-info"><div class="si-title">${esc(t.name)}</div><div class="si-meta">${t.players.length} players</div></div>
+      <div class="si-actions"><button class="si-del" onclick="event.stopPropagation();delTeam(${i})">Del</button></div>
+    </div>`;});
+}
+function delGame(i){if(!confirm('Delete this game?'))return;const g=loadData('vb_games');g.splice(i,1);saveData('vb_games',g);renderSaved();}
+function delTeam(i){if(!confirm('Delete this team?'))return;const t=loadData('vb_teams');t.splice(i,1);saveData('vb_teams',t);renderTeams();}
+function viewSaved(i){const g=loadData('vb_games')[i];renderTable(g.players,g.entries,g.name);document.getElementById('statsOverlay').classList.add('active');}
+function loadGame(i){
+  const g=loadData('vb_games')[i];players=g.players;entries=g.entries;entryId=entries.length;
+  currentGameName=g.name;currentGameDate=g.date;currentGameId=g.id;currentSet=g.currentSet||1;setScores=g.setScores||{};
+  selectedPlayer=null;buildRoster();document.getElementById('gameTitle').textContent=currentGameName;
+  updateSetUI();updateFeed();updateBtns();updateInd();sw('gameScreen');
+}
+
+// Setup
+function showSetup(){
+  sw('setupScreen');document.getElementById('rosterInputs').innerHTML='';
+  document.getElementById('gameDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('gameName').value='';
+  populateTeamSelect();
+  for(let i=0;i<8;i++)addPlayerRow();
+}
+function populateTeamSelect(){
+  const sel=document.getElementById('teamSelect'),teams=loadData('vb_teams');
+  sel.innerHTML='<option value="">Start fresh</option>';
+  teams.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.name;sel.appendChild(o);});
+}
+function loadTeamRoster(){
+  const sel=document.getElementById('teamSelect');
+  if(sel.value==='')return;
+  const team=loadData('vb_teams')[parseInt(sel.value)];
+  document.getElementById('rosterInputs').innerHTML='';
+  team.players.forEach(p=>addPlayerRow(p.num,p.name));
+  chk();
+}
+function loadTeamById(i){
+  document.getElementById('teamSelect').value=i;
+  loadTeamRoster();
+}
+function addPlayerRow(n='',nm=''){
+  const area=document.getElementById('rosterInputs'),row=document.createElement('div');
+  const idx=area.children.length;const color=COLORS[idx%COLORS.length];
+  row.className='player-row';
+  row.innerHTML=`<div class="color-dot" style="background:${color}"></div><input type="number" class="num-input" placeholder="#" value="${n}" min="0" max="99" inputmode="numeric"><input type="text" placeholder="Name" value="${nm}"><button class="remove-btn" onclick="this.parentElement.remove();recolorRows();chk();">&times;</button>`;
+  area.appendChild(row);row.querySelectorAll('input').forEach(i=>i.addEventListener('input',chk));
+}
+function recolorRows(){
+  document.querySelectorAll('#rosterInputs .player-row').forEach((r,i)=>{
+    r.querySelector('.color-dot').style.background=COLORS[i%COLORS.length];
+  });
+}
+function chk(){
+  let v=0;document.querySelectorAll('#rosterInputs .player-row').forEach(r=>{
+    if(r.querySelector('.num-input').value.trim()&&r.querySelectorAll('input')[1].value.trim())v++;
+  });document.getElementById('startBtn').disabled=v<1;
+}
+
+// Save team
+function showSaveTeam(){
+  const ps=getRosterFromInputs();
+  if(!ps.length){alert('Add at least one player first');return;}
+  document.getElementById('teamNameInput').value='';
+  document.getElementById('teamOverlay').classList.add('active');
+  setTimeout(()=>document.getElementById('teamNameInput').focus(),100);
+}
+function saveTeam(){
+  const name=document.getElementById('teamNameInput').value.trim();
+  if(!name){alert('Enter a team name');return;}
+  const ps=getRosterFromInputs();
+  const teams=loadData('vb_teams');
+  const existing=teams.findIndex(t=>t.name.toLowerCase()===name.toLowerCase());
+  if(existing>=0){if(!confirm(`"${name}" already exists. Overwrite?`))return;teams[existing]={name,players:ps};}
+  else{teams.push({name,players:ps});}
+  saveData('vb_teams',teams);
+  document.getElementById('teamOverlay').classList.remove('active');
+  populateTeamSelect();
+}
+function getRosterFromInputs(){
+  const ps=[];document.querySelectorAll('#rosterInputs .player-row').forEach(r=>{
+    const n=r.querySelector('.num-input').value.trim(),nm=r.querySelectorAll('input')[1].value.trim();
+    if(n&&nm)ps.push({num:parseInt(n),name:nm});
+  });return ps;
+}
+
+// Start
+function startGame(){
+  players=[];
+  document.querySelectorAll('#rosterInputs .player-row').forEach((r,i)=>{
+    const n=r.querySelector('.num-input').value.trim(),nm=r.querySelectorAll('input')[1].value.trim();
+    if(n&&nm)players.push({num:parseInt(n),name:nm,colorIdx:i%COLORS.length});
+  });
+  players.sort((a,b)=>a.num-b.num);
+  // reassign colors after sort by original order
+  currentGameName=document.getElementById('gameName').value.trim()||'Untitled Game';
+  currentGameDate=document.getElementById('gameDate').value;
+  currentGameId=Date.now();entries=[];entryId=0;currentSet=1;setScores={};selectedPlayer=null;
+  buildRoster();document.getElementById('gameTitle').textContent=currentGameName;
+  updateSetUI();updateFeed();updateBtns();updateInd();sw('gameScreen');
+}
+function buildRoster(){
+  const p=document.getElementById('rosterPanel');p.innerHTML='<div class="roster-panel-label">Roster</div>';
+  players.forEach((pl,i)=>{
+    const ci=pl.colorIdx!==undefined?pl.colorIdx:i%COLORS.length;
+    pl.colorIdx=ci;
+    const b=document.createElement('button');b.className=`player-btn pc-${ci}`;b.dataset.num=pl.num;
+    b.innerHTML=`<span class="player-dot"></span><span class="player-num">${pl.num}</span><span class="player-name">${pl.name}</span>`;
+    b.onclick=()=>selectPlayer(pl.num);p.appendChild(b);
+  });
+}
+
+// Selection
+function selectPlayer(n){
+  selectedPlayer=n;
+  document.querySelectorAll('.player-btn').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.num)===n));
+  updateBtns();updateInd();
+}
+function updateInd(){
+  const el=document.getElementById('selectedIndicator');
+  if(selectedPlayer!==null){
+    const p=players.find(x=>x.num===selectedPlayer);
+    el.textContent=`#${p.num} ${p.name}`;
+    el.className='selected-indicator has-player';
+    el.style.background=COLORS[p.colorIdx]+'18';
+    el.style.color=COLORS[p.colorIdx];
+  } else {
+    el.textContent='Tap a player';el.className='selected-indicator';
+    el.style.background='';el.style.color='';
+  }
+}
+function updateBtns(){document.querySelectorAll('.stat-btn').forEach(b=>b.classList.toggle('disabled',selectedPlayer===null));}
+
+// Sets
+function switchSet(n){
+  setScores[currentSet]={us:parseInt(document.getElementById('scoreUs').value)||0,them:parseInt(document.getElementById('scoreThem').value)||0};
+  currentSet=n;updateSetUI();
+}
+function updateSetUI(){
+  document.querySelectorAll('.set-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.set)===currentSet));
+  const s=setScores[currentSet]||{us:0,them:0};document.getElementById('scoreUs').value=s.us;document.getElementById('scoreThem').value=s.them;
+}
+
+// Record
+function rec(code,label,type){
+  if(selectedPlayer===null)return;
+  const player=players.find(p=>p.num===selectedPlayer);
+  const now=new Date(),ts=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+  entries.push({id:entryId++,playerNum:player.num,playerName:player.name,colorIdx:player.colorIdx,stat:code,statLabel:label,type,set:currentSet,time:ts});
+  updateFeed();
+  const el=document.getElementById('selectedIndicator');el.textContent=`#${player.num} ${label} ✓`;
+  selectedPlayer=null;document.querySelectorAll('.player-btn').forEach(b=>b.classList.remove('selected'));updateBtns();
+  setTimeout(()=>{if(selectedPlayer===null)updateInd();},1200);
+  autoSave();
+}
+function updateFeed(){
+  const el=document.getElementById('feedEntries'),recent=entries.slice(-10).reverse();
+  if(!recent.length){el.innerHTML='<div class="feed-empty">Stats appear here</div>';return;}
+  el.innerHTML=recent.map(e=>`<div class="feed-entry"><span class="feed-time">${e.time}</span><span class="feed-dot" style="background:${COLORS[e.colorIdx||0]}"></span><span class="feed-player">#${e.playerNum}</span><span class="feed-stat ${e.type==='positive'?'positive':e.type==='negative'?'negative':e.type==='special'?'special':'neutral-stat'}">${e.statLabel}</span><span class="feed-set">S${e.set}</span></div>`).join('');
+}
+function undoLast(){
+  if(!entries.length)return;const rm=entries.pop();updateFeed();
+  const b=document.getElementById('undoBtn');b.textContent=`Undid #${rm.playerNum} ${rm.stat}`;setTimeout(()=>b.textContent='Undo',1500);autoSave();
+}
+
+// Save
+let saveTO;
+function autoSave(){clearTimeout(saveTO);saveTO=setTimeout(()=>saveCurrent(),2000);}
+function saveCurrent(){
+  setScores[currentSet]={us:parseInt(document.getElementById('scoreUs').value)||0,them:parseInt(document.getElementById('scoreThem').value)||0};
+  const games=loadData('vb_games'),d={id:currentGameId,name:currentGameName,date:currentGameDate,players,entries,currentSet,setScores,savedAt:new Date().toISOString()};
+  const idx=games.findIndex(g=>g.id===currentGameId);if(idx>=0)games[idx]=d;else games.unshift(d);saveData('vb_games',games);
+}
+function saveAndExit(){saveCurrent();showHome();}
+
+// Stats
+function showStats(){renderTable(players,entries,currentGameName);document.getElementById('statsOverlay').classList.add('active');}
+function hideStats(){document.getElementById('statsOverlay').classList.remove('active');}
+function renderTable(pls,ents,title){
+  document.getElementById('statsTitle').textContent=title||'Match Stats';
+  const codes=['K','ATT','HE','SRV','SA','SE','R3','R2','R1','R0','AST','SATT','BHE','BLK','D','DT','DE'];
+  const headers=['Player','K','ATT','HE','Hit%','','SRV','SA','SE','','3','2','1','0','P.Avg','','AST','SATT','BHE','','BLK','','D','DT','DE','','Pts'];
+  let rows=pls.map(p=>{
+    const pe=ents.filter(e=>e.playerNum===p.num),c={};
+    codes.forEach(cd=>c[cd]=pe.filter(e=>e.stat===cd).length);
+    const tA=c.ATT+c.K+c.HE,hp=tA>0?((c.K-c.HE)/tA).toFixed(3):'.000';
+    const pT=c.R3+c.R2+c.R1+c.R0,pa=pT>0?((c.R3*3+c.R2*2+c.R1)/pT).toFixed(2):'0.00';
+    const pts=c.K+c.SA+c.BLK;
+    return{name:`#${p.num} ${p.name}`,color:COLORS[p.colorIdx||0],vals:[c.K,tA,c.HE,hp,'',c.SRV,c.SA,c.SE,'',c.R3,c.R2,c.R1,c.R0,pa,'',c.AST,c.SATT,c.BHE,'',c.BLK,'',c.D,c.DT,c.DE,'',pts]};
+  });
+  const tot={name:'TOTAL',color:null,vals:[]};
+  for(let i=0;i<rows[0].vals.length;i++){
+    if(rows[0].vals[i]===''){tot.vals.push('');continue;}
+    if(i===3){const k=rows.reduce((s,r)=>s+r.vals[0],0),a=rows.reduce((s,r)=>s+r.vals[1],0),e=rows.reduce((s,r)=>s+r.vals[2],0);tot.vals.push(a>0?((k-e)/a).toFixed(3):'.000');}
+    else if(i===14){const t3=rows.reduce((s,r)=>s+r.vals[9],0),t2=rows.reduce((s,r)=>s+r.vals[10],0),t1=rows.reduce((s,r)=>s+r.vals[11],0),t0=rows.reduce((s,r)=>s+r.vals[12],0),t=t3+t2+t1+t0;tot.vals.push(t>0?((t3*3+t2*2+t1)/t).toFixed(2):'0.00');}
+    else{tot.vals.push(rows.reduce((s,r)=>s+(typeof r.vals[i]==='number'?r.vals[i]:0),0));}
+  }
+  rows.push(tot);
+  document.getElementById('statsTableArea').innerHTML=`<div style="overflow-x:auto"><table class="stats-table">
+    <thead><tr>${headers.map(h=>h===''?'<th style="width:2px;padding:0"></th>':`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r.color?`<div class="player-color-cell"><span class="tc-dot" style="background:${r.color}"></span>${r.name}</div>`:r.name}</td>${r.vals.map(v=>v===''?'<td style="width:2px;padding:0;border-left:2px solid var(--border)"></td>':`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function sw(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+showHome();
+</script>
+</body>
+</html>
